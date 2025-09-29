@@ -1,0 +1,83 @@
+`timescale 1ns / 1ps
+
+module GPI_Periph (
+    input  logic        PCLK,
+    input  logic        PRESET,
+    // APB Interface Signals
+    input  logic [ 2:0] PADDR,
+    input  logic        PWRITE,
+    input  logic        PENABLE,
+    input  logic [31:0] PWDATA,
+    input  logic        PSEL,
+    output logic [31:0] PRDATA,
+    output logic        PREADY,
+    input  logic [ 7:0] gpi
+);
+    logic [7:0] idr;
+    logic [7:0] cr;
+
+    GPI U_GPI (.*);
+    APB_SlaveInf_GPI U_APB_SlaveInf_GPI (.*);
+
+endmodule
+
+module APB_SlaveInf_GPI (
+    //Global Signals
+    input  logic        PCLK,
+    input  logic        PRESET,
+    // APB Interface Signals
+    input  logic [ 2:0] PADDR,
+    input  logic        PWRITE,
+    input  logic        PENABLE,
+    input  logic [31:0] PWDATA,
+    input  logic        PSEL,
+    output logic [31:0] PRDATA,
+    output logic        PREADY,
+    // Internal port
+    input  logic [ 7:0] idr,
+    output logic [ 7:0] cr
+);
+
+    logic [31:0] slv_reg0; //slv_reg1;
+
+    assign cr = slv_reg0;
+
+    always_ff @(posedge PCLK, posedge PRESET) begin
+        if (PRESET) begin
+            slv_reg0 <= 0;
+            //slv_reg1 <= 0;
+
+        end else begin
+            PREADY <= 1'b0;
+            if (PSEL && PENABLE) begin
+                PREADY <= 1'b1;
+                if (PWRITE) begin
+                    case (PADDR[2])
+                        2'd0: slv_reg0 <= PWDATA;
+                        2'd1: ;
+                    endcase
+                end else begin
+                    case (PADDR[2])
+                        2'd0: PRDATA <= slv_reg0;
+                        2'd1: PRDATA <= idr;
+                    endcase
+                end
+            end
+        end
+    end
+
+endmodule
+
+module GPI (
+    input  logic [7:0] cr,
+    output logic [7:0] idr,
+    input  logic [7:0] gpi
+);
+    genvar i;
+    generate
+        for (i = 0; i < 8; i++) begin
+            assign idr[i] = cr[i] ? gpi[i] : 1'bz;
+        end
+    endgenerate
+
+endmodule
